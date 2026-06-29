@@ -1,56 +1,142 @@
-# EMX - PIBR (Product Image Batcher And Renamer)
+# EMX PIBR — Product Image Batcher & Renamer
 
-This is a tool to import excel sheets (`.xlsx`) or csv files (`.csv`) in order to rename product item numbers, download corresponding image files and rename them to their new corresponding item number, and which bikes/brands the product fits.
+Internal desktop tool for EMX Racing. Ingests a supplier spreadsheet (`.xlsx` / `.csv`), maps columns to EMX fields, downloads product images, renames them to EMX item numbers, and exports a clean spreadsheet alongside the renamed image folder.
 
-## Base project requirements
+Built with [Wails v2](https://wails.io/) — Go backend, React/TypeScript frontend, shipped as a single native binary.
 
-- [ ] Able to preview the `.xlsx` or `.csv`file in order to select which column is which
-- [ ] Extract product description and item numbers
-- [ ] Define a manufacturer prefix that will be set before all item numbers
-- [ ] Export new `.xlsx` file with the new renamed item numbers, original item numbers, image name
-- [ ] Export folder with manufacturer prefix that contains all images
+---
 
-**_If possible_**
+## Prerequisites
 
-- [ ] Use a already defined GO binary to extract which bikes/brands the product fits
+Install all of the following before cloning the repo.
 
-Supported platforms
+| Tool          | Version               | Install                                                    |
+| ------------- | --------------------- | ---------------------------------------------------------- |
+| **Go**        | 1.23+                 | [go.dev/dl](https://go.dev/dl/)                            |
+| **Node.js**   | 15+ (LTS recommended) | [nodejs.org](https://nodejs.org/en/download)               |
+| **Wails CLI** | v2                    | `go install github.com/wailsapp/wails/v2/cmd/wails@latest` |
 
-| Platform/Operating System | Support | Notes                               |
-| ------------------------- | :-----: | ----------------------------------- |
-| `macOS`                   |    ✓    | Develop platform                    |
-| `Windows 10`/`Windows 11` |    ✓    | Should mainly support               |
-| `Windows 7`               |    -    | Should partialy support if possible |
+Verify your setup:
 
-## Workflow
+```sh
+go version       # go1.23.x or higher
+node --version   # v15.x or higher
+wails version    # v2.x
+```
 
-1. Import the `.csv` or `.xlsx` file
-2. Get a preview of the file
-3. Do a _guess_ of which columns that belongs to which, and show the _guesses_ visually in a preview of the spreadsheet
-4. Make the user either input manually a manufacturer prefix for all item numbers
-5. Based on the links in the spreadsheet, download all the images linked to all products
-6. Save them to the folder with the defined prefix that was defined
-7. Simultaneously as the image download, process all item numbers
-8. Export new `.xlsx` file with a `EMX item number`, `Manufacturer item number`, `Product Description`,`Image`, `Bike`. `Bike` field is optional if time exists
+---
+
+## Getting started
+
+```sh
+git clone <repo-url>
+cd pibr
+
+# Wails installs frontend deps automatically on first run,
+# but you can pre-install them:
+cd frontend && npm install && cd ..
+```
+
+---
 
 ## Development
 
-This is the official Wails React-TS template.
+```sh
+wails dev
+```
 
-You can configure the project by editing `wails.json`. More information about the project settings can be found on the [wails documentation](https://wails.io/docs/reference/project-config)
+- Hot-reloads frontend changes via Vite
+- Exposes a browser-accessible dev server at [localhost:34115](http://localhost:34115) — useful for devtools/debugging Go bindings without the native window
 
-### Requirements
+Frontend-only work (no Go changes):
 
-- [`Go 1.21+`](https://go.dev/dl/)
-- [`NPM (Node 15+)`](https://nodejs.org/en/download)
+```sh
+cd frontend
+npm run dev   # plain Vite server, no Go backend
+```
 
-### Live Development
+---
 
-To run in live development mode, run `wails dev` in the project directory. This will run a Vite development
-server that will provide very fast hot reload of your frontend changes. If you want to develop in a browser
-and have access to your Go methods, there is also a dev server that runs on [localhost:34115](http://localhost:34115). Connect
-to this in your browser, and you can call your Go code from devtools.
+## Building
 
-### Building
+```sh
+wails build
+```
 
-To build a redistributable, production mode package, use `wails build`.
+Produces a self-contained binary in `build/bin/`. No runtime dependencies required on the target machine.
+
+| Flag                                  | Effect                                     |
+| ------------------------------------- | ------------------------------------------ |
+| `wails build -platform windows/amd64` | Cross-compile for Windows from macOS       |
+| `wails build -clean`                  | Force clean build                          |
+| `wails build -nsis`                   | Generate Windows installer (requires NSIS) |
+
+---
+
+## Project structure
+
+```text
+pibr/
+├── app.go              # Go app struct — exposes methods to the frontend
+├── main.go             # Wails entry point
+├── parser/             # Go packages (spreadsheet parsing, image logic, etc.)
+├── frontend/
+│   ├── src/
+│   │   ├── components/ # React UI components (shadcn/ui base)
+│   │   ├── lib/        # Utilities, toast helpers, simple spreadsheet parser
+│   │   └── App.tsx     # Root component
+│   ├── package.json
+│   └── vite.config.ts
+├── build/              # Wails build output and app icons
+├── wails.json          # Wails project config
+└── go.mod
+```
+
+---
+
+## Tech stack
+
+### Backend (Go)
+
+- [Wails v2](https://wails.io/) — bridges Go and the webview frontend
+
+### Frontend (TypeScript / React)
+
+- React 19 + TypeScript 6
+- Vite 8
+- Tailwind CSS v4
+- [shadcn/ui](https://ui.shadcn.com/) — component primitives
+- [sonner](https://sonner.emilkowal.ski/) — toast notifications
+- [exceljs](https://github.com/exceljs/exceljs) — in-browser Excel/CSV parsing
+
+---
+
+## Platform support
+
+| Platform        | Status                | Notes                                     |
+| --------------- | --------------------- | ----------------------------------------- |
+| macOS           | Primary dev platform  | All devs should be able to build natively |
+| Windows 10 / 11 | Primary target        | Test all releases here                    |
+| Windows 7       | Partial (best effort) | WebView2 may not be available             |
+
+---
+
+## Planned features
+
+- [ ] Spreadsheet preview with column mapping UI
+- [ ] Extract product descriptions and item numbers from mapped columns
+- [ ] Define a manufacturer prefix applied to all EMX item numbers
+- [ ] Bulk image download from URLs in the spreadsheet
+- [ ] Rename images to `<prefix><item-number>` scheme
+- [ ] Export cleaned `.xlsx` with EMX item number, manufacturer number, description, image name, and bike fitment
+- [ ] Integration with internal Go binary for bike/brand fitment lookup
+
+---
+
+## Contributing
+
+1. Branch off `main` — use `feature/<short-description>` or `fix/<short-description>`
+2. Run `wails dev` and verify changes work end-to-end in the native window
+3. Open a PR with a short description of what changed and why
+
+No external CI is configured yet. Manual smoke-test on Windows before merging anything that touches image I/O or file export.
