@@ -83,7 +83,7 @@ pibr/
 ├── frontend/
 │   ├── src/
 │   │   ├── components/ # React UI components (shadcn/ui base)
-│   │   ├── lib/        # Utilities, toast helpers, simple spreadsheet parser
+│   │   ├── lib/        # Utilities, toast helpers, simple spreadsheet metadata parser
 │   │   └── App.tsx     # Root component
 │   ├── package.json
 │   └── vite.config.ts
