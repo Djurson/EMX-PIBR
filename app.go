@@ -38,6 +38,9 @@ type SpreadsheetInfo struct {
 	IsExcel          bool `json:"isExcel"`
 	NumberOfSheets   int  `json:"numberOfSheets"`
 	TotalExcelTables int  `json:"totalExcelTables"`
+
+	// Headers holds the first-row cell values, used for column mapping.
+	Headers []string `json:"headers"`
 }
 
 // OpenSpreadsheet opens the OS file picker filtered to spreadsheet formats
@@ -70,6 +73,11 @@ func (a *App) OpenSpreadsheet() (*SpreadsheetInfo, error) {
 		return nil, err
 	}
 
+	headers, err := parser.GetHeaders(path, filename)
+	if err != nil {
+		return nil, err
+	}
+
 	return &SpreadsheetInfo{
 		Path:             path,
 		Filename:         filename,
@@ -78,5 +86,6 @@ func (a *App) OpenSpreadsheet() (*SpreadsheetInfo, error) {
 		IsExcel:          stats.IsExcel,
 		NumberOfSheets:   stats.NumberOfSheets,
 		TotalExcelTables: stats.TotalExcelTables,
+		Headers:          headers,
 	}, nil
 }

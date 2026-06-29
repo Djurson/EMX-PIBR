@@ -25,6 +25,8 @@ export interface SelectedSpreadsheet {
   numberOfSheets: number;
   /** Number of named Excel tables. Always 0 for CSV. */
   totalExcelTables: number;
+  /** First-row cell values, used for column mapping. */
+  headers: string[];
 }
 
 interface SpreadsheetPickerProps {
@@ -54,6 +56,7 @@ export function SpreadsheetPicker({ value, onChange }: SpreadsheetPickerProps) {
         isExcel: info.isExcel,
         numberOfSheets: info.numberOfSheets,
         totalExcelTables: info.totalExcelTables,
+        headers: info.headers ?? [],
       });
     } catch (err) {
       console.error(err);

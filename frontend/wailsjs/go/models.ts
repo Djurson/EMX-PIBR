@@ -8,6 +8,7 @@ export namespace main {
 	    isExcel: boolean;
 	    numberOfSheets: number;
 	    totalExcelTables: number;
+	    headers: string[];
 	
 	    static createFrom(source: any = {}) {
 	        return new SpreadsheetInfo(source);
@@ -22,6 +23,7 @@ export namespace main {
 	        this.isExcel = source["isExcel"];
 	        this.numberOfSheets = source["numberOfSheets"];
 	        this.totalExcelTables = source["totalExcelTables"];
+	        this.headers = source["headers"];
 	    }
 	}
 
