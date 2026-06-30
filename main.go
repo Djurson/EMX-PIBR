@@ -17,18 +17,15 @@ func main() {
 
 	// Create application with options
 	err := wails.Run(&options.App{
-		Title:  "EMX - SPIX",
-		Width:  1200,
-		Height: 800,
-		AssetServer: &assetserver.Options{
-			Assets: assets,
-		},
+		Title:            "EMX - SPIX",
+		Width:            1200,
+		Height:           800,
+		AssetServer:      &assetserver.Options{Assets: assets},
 		BackgroundColour: &options.RGBA{R: 255, G: 255, B: 255, A: 255},
 		OnStartup:        app.startup,
 		Bind:             []interface{}{app},
-		DragAndDrop: &options.DragAndDrop{
-			EnableFileDrop: true,
-		},
+		DragAndDrop:      &options.DragAndDrop{EnableFileDrop: true},
+		DisableResize:    false,
 	})
 
 	if err != nil {

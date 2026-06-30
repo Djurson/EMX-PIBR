@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
-	"pibr/parser"
+	"spix/spreadsheet/combine"
+	"spix/spreadsheet/parsing"
 	"strings"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -12,8 +14,17 @@ import (
 
 // App is the main application struct. All exported methods are bound to the
 // frontend and callable via the generated wailsjs bindings.
+// App holds the loaded project for the current session.
 type App struct {
-	ctx context.Context
+	ctx     context.Context
+	project *Project // nil until LoadProject succeeds
+}
+
+// Project is a loaded supplier + EMX file pair, parsed and held for the session.
+type Project struct {
+	SupplierPath string            `json:"supplierPath"`
+	EMXPath      string            `json:"emxPath"`
+	Combined     *parsing.Workbook `json:"combined"`
 }
 
 // NewApp creates a new App instance.
@@ -25,6 +36,32 @@ func NewApp() *App {
 // The context is required for runtime calls such as dialogs.
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+}
+
+// LoadProject parses both files and holds them on the App for the session.
+// Returns the parsed project so the frontend can render the studio.
+func (a *App) LoadProject(supplierPath, emxPath string) (*Project, error) {
+	supplier, err := parsing.ReadWorkbook(supplierPath, filepath.Base(supplierPath))
+	if err != nil {
+		return nil, fmt.Errorf("supplier file: %w", err)
+	}
+
+	emx, err := parsing.ReadWorkbook(emxPath, filepath.Base(emxPath))
+	if err != nil {
+		return nil, fmt.Errorf("emx file: %w", err)
+	}
+
+	combined, err := combine.Combine(supplier, emx)
+	if err != nil {
+		return nil, fmt.Errorf("combine: %w", err)
+	}
+
+	a.project = &Project{
+		SupplierPath: supplierPath,
+		EMXPath:      emxPath,
+		Combined:     combined,
+	}
+	return a.project, nil
 }
 
 // SpreadsheetInfo holds file metadata and parsed statistics for a spreadsheet
@@ -64,12 +101,12 @@ func (a *App) OpenSpreadsheetFromPath(path string) (*SpreadsheetInfo, error) {
 
 	filename := filepath.Base(path)
 
-	stats, err := parser.GetStats(path, filename)
+	stats, err := parsing.GetStats(path, filename)
 	if err != nil {
 		return nil, err
 	}
 
-	headers, err := parser.GetHeaders(path, filename)
+	headers, err := parsing.GetHeaders(path, filename)
 	if err != nil {
 		return nil, err
 	}
@@ -84,6 +121,23 @@ func (a *App) OpenSpreadsheetFromPath(path string) (*SpreadsheetInfo, error) {
 		TotalExcelTables: stats.TotalExcelTables,
 		Headers:          headers,
 	}, nil
+}
+
+// OpenWorkbook parses the spreadsheet at the given absolute path into a full
+// Workbook with every sheet's header row and data rows. Called when the user
+// enters the Mapping Studio, after the cheaper OpenSpreadsheet metadata pass.
+// Returns nil without an error for an empty path or a non-spreadsheet extension.
+func (a *App) OpenWorkbook(path string) (*parsing.Workbook, error) {
+	if path == "" {
+		return nil, nil
+	}
+
+	ext := strings.ToLower(filepath.Ext(path))
+	if ext != ".xlsx" && ext != ".xls" && ext != ".csv" {
+		return nil, nil
+	}
+
+	return parsing.ReadWorkbook(path, filepath.Base(path))
 }
 
 // OpenSpreadsheet opens the OS file picker filtered to spreadsheet formats
@@ -111,12 +165,12 @@ func (a *App) OpenSpreadsheet() (*SpreadsheetInfo, error) {
 
 	filename := filepath.Base(path)
 
-	stats, err := parser.GetStats(path, filename)
+	stats, err := parsing.GetStats(path, filename)
 	if err != nil {
 		return nil, err
 	}
 
-	headers, err := parser.GetHeaders(path, filename)
+	headers, err := parsing.GetHeaders(path, filename)
 	if err != nil {
 		return nil, err
 	}

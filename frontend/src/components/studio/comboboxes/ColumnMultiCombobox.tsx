@@ -1,0 +1,56 @@
+import { Button } from "@/components/ui/button";
+import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { useState } from "react";
+
+interface ColumnMultiComboboxProps {
+  /** Currently selected headers. */
+  value: string[];
+  /** All available headers. */
+  headers: string[];
+  /** Called with the updated selection when a header is toggled. */
+  onChange: (value: string[]) => void;
+  placeholder?: string;
+}
+
+/** Multi-select searchable combobox for choosing multiple source columns. */
+export function ColumnMultiCombobox({ value, headers, onChange, placeholder = "None" }: ColumnMultiComboboxProps) {
+  const [open, setOpen] = useState(false);
+
+  function toggle(header: string) {
+    onChange(value.includes(header) ? value.filter((h) => h !== header) : [...value, header]);
+  }
+
+  const triggerLabel = value.length === 0 ? placeholder : value.length === 1 ? value[0] : `${value.length} columns`;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" role="combobox" aria-expanded={open} className="h-8 w-full justify-between text-xs font-normal">
+          <span className="truncate">{triggerLabel}</span>
+          <ChevronsUpDown className="ml-1 size-3 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-xl" align="start" sideOffset={4}>
+        <Command>
+          <CommandInput placeholder="Search columns..." />
+          <CommandList className="max-h-48">
+            <CommandEmpty>No column found.</CommandEmpty>
+            {headers.map((header, i) => {
+              const label = header || `(column ${i + 1})`;
+              const selected = value.includes(header);
+              return (
+                <CommandItem key={i} value={`${i}:${label}`} onSelect={() => toggle(header)}>
+                  <Check className={cn("mr-1 size-3", selected ? "opacity-100" : "opacity-0")} />
+                  {label}
+                </CommandItem>
+              );
+            })}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}

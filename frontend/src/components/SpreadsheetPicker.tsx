@@ -1,12 +1,12 @@
-import { type CSSProperties, useEffect, useState } from "react";
+import { type CSSProperties, useState } from "react";
 import { FileSpreadsheet, Upload, X } from "lucide-react";
 import { Attachment, AttachmentAction, AttachmentActions, AttachmentContent, AttachmentDescription, AttachmentMedia, AttachmentTitle } from "@/components/ui/attachment";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
-import { OpenSpreadsheet, OpenSpreadsheetFromPath } from "../../wailsjs/go/main/App";
-import { OnFileDrop, OnFileDropOff } from "../../wailsjs/runtime/runtime";
+import { OpenSpreadsheet } from "../../wailsjs/go/main/App";
 import { ToastError } from "@/lib/ToastFunctions";
 import { BuildFileMetaData } from "@/lib/metadata/parsing";
 import { cn } from "@/lib/utils";
+import type { FileVariant } from "@/App";
 
 /**
  * File metadata and parsed statistics for a spreadsheet opened via the OS dialog.
@@ -33,56 +33,31 @@ export interface SelectedSpreadsheet {
 
 interface SpreadsheetPickerProps {
   value: SelectedSpreadsheet | null;
-  onChange: (file: SelectedSpreadsheet | null) => void;
+  /** Which slot this picker fills — used as the `data-drop-zone` identifier. */
+  variant: FileVariant;
+  onChange: (variant: FileVariant, file: SelectedSpreadsheet | null) => void;
+  /** Whether a file is currently being dragged over this zone. */
+  dragging?: boolean;
+  disabled?: boolean;
 }
 
 /**
  * File picker for spreadsheets. Supports two input methods:
  * - Click to open the native OS file dialog via `OpenSpreadsheet`.
- * - Drag a file from the OS onto the drop zone via Wails `OnFileDrop` +
- *   `OpenSpreadsheetFromPath`. The drop zone is activated by the CSS variable
- *   `--wails-drop-target: drop` (default Wails `CSSDropProperty`).
+ * - Drag a file from the OS onto the drop zone. Drop routing is handled by the
+ *   parent via a single global `OnFileDrop` handler — this component only renders
+ *   the `data-drop-zone` attribute and `--wails-drop-target` CSS variable so
+ *   Wails knows which elements are valid drop targets.
  */
-export function SpreadsheetPicker({ value, onChange }: SpreadsheetPickerProps) {
+export function SpreadsheetPicker({ disabled, variant, value, onChange, dragging = false }: SpreadsheetPickerProps) {
   const [loading, setLoading] = useState(false);
-  const [dragging, setDragging] = useState(false);
-
-  useEffect(() => {
-    OnFileDrop(async (_x, _y, paths) => {
-      setDragging(false);
-      const path = paths[0];
-      if (!path) return;
-      setLoading(true);
-      try {
-        const info = await OpenSpreadsheetFromPath(path);
-        if (!info) return; // not a spreadsheet extension — Go returns null
-        onChange({
-          name: info.filename,
-          path: info.path,
-          size: info.size,
-          totalRows: info.totalRows,
-          isExcel: info.isExcel,
-          numberOfSheets: info.numberOfSheets,
-          totalExcelTables: info.totalExcelTables,
-          headers: info.headers ?? [],
-        });
-      } catch (err) {
-        console.error(err);
-        ToastError("Could not open file", String(err));
-      } finally {
-        setLoading(false);
-      }
-    }, true);
-
-    return () => OnFileDropOff();
-  }, [onChange]);
 
   async function handlePick() {
     setLoading(true);
     try {
       const info = await OpenSpreadsheet();
-      if (!info) return; // user cancelled dialog
-      onChange({
+      if (!info) return;
+      onChange(variant, {
         name: info.filename,
         path: info.path,
         size: info.size,
@@ -93,7 +68,6 @@ export function SpreadsheetPicker({ value, onChange }: SpreadsheetPickerProps) {
         headers: info.headers ?? [],
       });
     } catch (err) {
-      console.error(err);
       ToastError("Could not open file", String(err));
     } finally {
       setLoading(false);
@@ -102,31 +76,34 @@ export function SpreadsheetPicker({ value, onChange }: SpreadsheetPickerProps) {
 
   if (value) {
     return (
-      <Attachment state="done">
-        <AttachmentMedia>
-          <FileSpreadsheet className="size-5" />
-        </AttachmentMedia>
-        <AttachmentContent>
-          <AttachmentTitle>{value.name}</AttachmentTitle>
-          <AttachmentDescription>{BuildFileMetaData(value)}</AttachmentDescription>
-        </AttachmentContent>
-        <AttachmentActions>
-          <AttachmentAction aria-label="Remove file" onClick={() => onChange(null)}>
-            <X className="size-3.5" />
-          </AttachmentAction>
-        </AttachmentActions>
-      </Attachment>
+      <div data-drop-zone={variant} style={{ "--wails-drop-target": "drop" } as CSSProperties}>
+        <Attachment state="done">
+          <AttachmentMedia>
+            <FileSpreadsheet className="size-5" />
+          </AttachmentMedia>
+          <AttachmentContent>
+            <AttachmentTitle>{value.name}</AttachmentTitle>
+            <AttachmentDescription>{BuildFileMetaData(value)}</AttachmentDescription>
+          </AttachmentContent>
+          <AttachmentActions>
+            <AttachmentAction aria-label="Remove file" onClick={() => onChange(variant, null)}>
+              <X className="size-3.5" />
+            </AttachmentAction>
+          </AttachmentActions>
+        </Attachment>
+      </div>
     );
   }
 
   return (
     <button
       type="button"
-      disabled={loading}
+      disabled={loading || disabled}
       onClick={handlePick}
+      data-drop-zone={variant}
       style={{ "--wails-drop-target": "drop" } as CSSProperties}
       className={cn(
-        "flex w-full cursor-pointer flex-col items-center justify-center gap-4 rounded-lg border-2 border-dashed px-6 py-12 text-center transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+        "flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-6 py-4 text-center transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
         dragging ? "border-primary bg-primary/5" : "border-border bg-muted/30 hover:border-ring hover:bg-muted/50",
       )}>
       <div className={cn("flex size-12 items-center justify-center rounded-full transition-colors", dragging ? "bg-primary/10" : "bg-muted")}>

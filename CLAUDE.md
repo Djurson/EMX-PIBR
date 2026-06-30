@@ -4,19 +4,20 @@ Guidance for working in this repository. Keep it current: when you change archit
 
 ## Project overview
 
-**EMX SPIX** (Supplier Products Importer & Exporter) is an internal desktop app for EMX Racing. It ingests a supplier spreadsheet (`.xlsx` / `.csv`), maps its columns to EMX fields, and produces **Pyramid-ready import files** plus a renamed, systematically-styled product image set — with minimal manual clicking.
+**EMX SPIX** (Supplier Products Importer & Exporter) is an internal desktop app for EMX Racing. It takes a supplier spreadsheet (`.xlsx` / `.csv`) and an **EMX product file**, keeps only the supplier rows for products EMX stocks, downloads those products' images, and renames each image to the matching EMX article number — with minimal manual clicking.
 
-Pyramid Business Studio is EMX's internal ERP (products, product groups, item numbers). SPIX does **not** import into Pyramid directly; it produces files that a Pyramid consultant's import tool ingests.
+The EMX product file is the source of truth: it pairs each EMX article number with the supplier's corresponding article number. SPIX **joins** the two files on the supplier article number, filtering the supplier's full catalogue down to the products EMX carries. Article numbers are **read from the EMX file, never generated**.
 
-The full plan, milestones, and locked decisions live in [`roadmap.md`](roadmap.md). Read it before non-trivial feature work — it is the source of truth for where the product is headed. [`requirements.md`](requirements.md) is the original stakeholder brief; [`files/`](files/) holds real supplier example spreadsheets (Bolt, Polisport).
+The full plan, milestones, and locked decisions live in [`roadmap.md`](roadmap.md). Read it before non-trivial feature work — it is the source of truth for where the product is headed. [`files/`](files/) holds real supplier example spreadsheets (Bolt, Polisport).
 
 ### Pipeline (target)
 
-1. Map supplier columns → EMX fields.
-2. Build EMX item number = `<prefix><separator><supplier number>` (e.g. `BM-12345`, `PS12345`).
-3. Download images → rename to EMX number → systematic look via the **Photoroom API** → move to the network "eline" image folder.
-4. Emit small, **single-purpose** files (only updated products): images, descriptions, pricing, manuals — each its own file.
-5. Product descriptions: rewrite + translate via **OpenAI** (EN → SV, human review, then SV → FI + EN).
+1. Load the supplier spreadsheet and the EMX product file.
+2. Map columns: supplier article number + image URL(s) on the supplier side; EMX article number + supplier article number on the EMX side.
+3. Join + filter: keep only supplier rows whose article number appears in the EMX file, tagging each kept row with its EMX article number.
+4. Download images for the matched products → rename to the EMX article number.
+
+Later phases (Photoroom systematic look, network "eline" folder, single-purpose import files, AI descriptions) are tracked in [`roadmap.md`](roadmap.md) but are out of current scope.
 
 ### Stack
 
@@ -44,47 +45,44 @@ Wails exposes exported methods on `App` (in [`app.go`](app.go)) as TypeScript bi
 
 All file reading happens in **Go**. The frontend never reads files directly — the browser `File` API is not used in any active path. Files enter Go by absolute path two ways:
 
-- OS dialog via `runtime.OpenFileDialog` → `OpenSpreadsheet()`.
-- Native drag-and-drop (`OnFileDrop`) → `OpenSpreadsheetFromPath(path)`.
+- OS dialog via `runtime.OpenFileDialog` → `OpenSpreadsheet()` (cheap metadata: `SpreadsheetInfo`).
+- Native drag-and-drop (`OnFileDrop`) → `OpenSpreadsheetFromPath(path)` (same `SpreadsheetInfo`).
 
-Both return the same `SpreadsheetInfo` struct.
+For full data, `OpenWorkbook(path)` returns a `parsing.Workbook` (every sheet's headers + rows). The import screen takes **two** files — the supplier spreadsheet and the EMX product file — routed by `data-drop-zone` (see the drag-and-drop gotcha).
 
-### Parsing (`parser/`, no Wails dependency)
-
-Spreadsheet stats and headers are parsed with the **standard library only** — no third-party spreadsheet lib:
+### Parsing (`spreadsheet/parsing`, no Wails dependency)
 
 - **CSV**: `encoding/csv`.
-- **XLSX**: `archive/zip` + worksheet XML. Stats use byte-counting of `<row` tags; headers resolve shared strings (`readSharedStrings`) and cell references (`resolveCell`, `columnIndex`).
+- **XLSX**: [`excelize`](https://github.com/qax-os/excelize) — `OpenFile` + `GetRows`, no manual ZIP/XML.
 
-### Frontend: the Mapping Studio
+Files in the package: `parse.go` (public API + CSV/Excel dispatch: `IsCSV`, `GetStats`, `GetHeaders`, `ReadWorkbook`), `csv.go`, `excel.go` (incl. `splitHeader` header-row detection), `types.go` (`SpreadsheetStats`, `SheetData`, `Workbook`).
 
-Flow: import screen (`SpreadsheetPicker`) → **full-window 3-pane Mapping Studio** once a file loads ([`App.tsx`](frontend/src/App.tsx) gates on `inStudio`). The studio:
+`splitHeader` picks the header row as the first row with ≥2 non-empty cells, skipping the blank/title/banner rows that precede real headers in supplier exports.
 
-- **Left** — `SheetRail`: worksheet list (workbooks may hold many sheets, e.g. Bolt's per-update-type split).
-- **Center** — `MappingGrid`: real data grid; each column header is a dropdown assigning an EMX field; a pinned read-only `EMX #` column resolves live.
-- **Right** — `ConfigDrawer`: supplier prefix/separator (live example) + output-file checklist.
+### Frontend: the studio
 
-Spreadsheet data is modeled by `Workbook` / `SheetData` ([`lib/workbook.ts`](frontend/src/lib/workbook.ts)). `toWorkbook` is the single adapter point — widen it when the Go side returns per-sheet rows (roadmap M0).
+Flow: import screen (two `SpreadsheetPicker`s in [`App.tsx`](frontend/src/App.tsx)) → studio once `OpenWorkbook` resolves (`App.tsx` gates on `workbook`). The studio currently shows the parsed supplier workbook (sheet rail + read-only grid + a config drawer for column mapping); the join/filter against the EMX file is the next build step (roadmap M2/M3).
+
+Spreadsheet data is modeled by `Workbook` / `SheetData` ([`lib/workbook.ts`](frontend/src/lib/workbook.ts)); `toWorkbook` adapts the Go `parsing.Workbook` binding into that model and is the single adapter point.
 
 ## Key files
 
-| Path                                                                      | Responsibility                                                                             |
-| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| [`app.go`](app.go)                                                        | Wails `App`; bound methods `OpenSpreadsheet`, `OpenSpreadsheetFromPath`; `SpreadsheetInfo` |
-| [`main.go`](main.go)                                                      | Wails options; window config; `DragAndDrop.EnableFileDrop`                                 |
-| `parser/spreadsheet.go`                                                   | CSV + XLSX stats and header parsing; no Wails dependency                                   |
-| `frontend/src/App.tsx`                                                    | Top-level: import screen → Mapping Studio gate                                             |
-| `frontend/src/components/SpreadsheetPicker.tsx`                           | File picker — OS dialog + drag-and-drop                                                    |
-| `frontend/src/components/studio/MappingStudio.tsx`                        | 3-pane workspace orchestrator + status bar                                                 |
-| `frontend/src/components/studio/{SheetRail,MappingGrid,ConfigDrawer}.tsx` | Studio panes                                                                               |
-| `frontend/src/lib/columnMapping.ts`                                       | EMX fields, `guessMapping`, `assignHeader`, `fieldForHeader`, `isMappingComplete`          |
-| `frontend/src/lib/supplierProfile.ts`                                     | `SupplierProfile`, `BuildArticleNumber` (prefix + separator rule)                          |
-| `frontend/src/lib/outputFiles.ts`                                         | Output-file types (images, descriptions, pricing, manuals)                                 |
-| `frontend/src/lib/workbook.ts`                                            | `Workbook`/`SheetData` model + `toWorkbook` adapter                                        |
-| `frontend/src/lib/metadata/parsing.ts`                                    | `BuildFileMetaData`, `SpreadsheetStats`                                                    |
-| `frontend/src/lib/ToastFunctions.tsx`                                     | `ToastError`, `ToastSucess` wrappers                                                       |
-| `frontend/src/lib/utils.ts`                                               | `cn()` Tailwind class merger                                                               |
-| `frontend/wailsjs/`                                                       | Auto-generated Wails bindings — do not edit                                                |
+| Path                                                                      | Responsibility                                                                                             |
+| ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| [`app.go`](app.go)                                                        | Wails `App`; bound methods `OpenSpreadsheet`, `OpenSpreadsheetFromPath`, `OpenWorkbook`; `SpreadsheetInfo` |
+| [`main.go`](main.go)                                                      | Wails options; window config; `DragAndDrop.EnableFileDrop`                                                 |
+| `spreadsheet/parsing/{parse,csv,excel,types}.go`                          | CSV + XLSX parsing (stats, headers, full workbook); no Wails dependency                                    |
+| `frontend/src/App.tsx`                                                    | Top-level: two-file import screen → studio gate; global `OnFileDrop` drop routing                          |
+| `frontend/src/components/SpreadsheetPicker.tsx`                           | File picker — OS dialog + drag-and-drop; `data-drop-zone` + `variant`                                      |
+| `frontend/src/components/studio/MappingStudio.tsx`                        | Studio workspace orchestrator                                                                              |
+| `frontend/src/components/studio/{SheetRail,MappingGrid,ConfigDrawer}.tsx` | Studio panes                                                                                               |
+| `frontend/src/components/studio/comboboxes/`                              | Searchable single/multi column-mapping comboboxes                                                          |
+| `frontend/src/lib/columnMapping.ts`                                       | EMX field set, `guessMapping`, `isMappingComplete`                                                         |
+| `frontend/src/lib/workbook.ts`                                            | `Workbook`/`SheetData` model + `toWorkbook` adapter                                                        |
+| `frontend/src/lib/metadata/parsing.ts`                                    | `BuildFileMetaData`, `SpreadsheetStats`                                                                    |
+| `frontend/src/lib/ToastFunctions.tsx`                                     | `ToastError`, `ToastSucess` wrappers                                                                       |
+| `frontend/src/lib/utils.ts`                                               | `cn()` Tailwind class merger                                                                               |
+| `frontend/wailsjs/`                                                       | Auto-generated Wails bindings — do not edit                                                                |
 
 ## Code conventions
 
@@ -144,9 +142,11 @@ style={{ "--wails-drop-target": "drop" } as CSSProperties}
 
 Register `OnFileDrop(cb, true)` on mount, `OnFileDropOff()` on unmount. The callback receives **absolute paths** — hand them to `OpenSpreadsheetFromPath`, not the browser `File` API.
 
-### XLSX is a ZIP
+`OnFileDrop` is **global** — only one handler can be active. With two drop zones (supplier + EMX), register a single handler in `App.tsx` and route by the drop point: `document.elementFromPoint(x, y)?.closest("[data-drop-zone]")` gives the target `variant`. Each `SpreadsheetPicker` only renders `data-drop-zone` + the CSS variable; it does **not** register its own `OnFileDrop`.
 
-`.xlsx` files are ZIP archives of XML. `parser/spreadsheet.go` reads them directly via `archive/zip` — no spreadsheet library. Row counting uses `<row` byte counting; the first row per sheet is treated as a header.
+### Header-row detection
+
+Supplier sheets often start with blank or title/banner rows before the real header (e.g. Polisport's header is on row 5). `splitHeader` (in `spreadsheet/parsing/excel.go`) treats the first row with ≥2 non-empty cells as the header, not row 0 — taking the first qualifying row, not the widest, so a stray wide data row deeper in the sheet can't be mistaken for the header.
 
 ### Dialog / path returns null on cancel or non-spreadsheet
 

@@ -1,8 +1,21 @@
 # EMX SPIX — Supplier Products Importer & Exporter
 
-Internal desktop tool for EMX Racing. Ingests a supplier spreadsheet (`.xlsx` / `.csv`), maps columns to EMX fields, downloads product images, renames them to EMX item numbers, and exports Pyramid-ready import files.
+Internal desktop tool for EMX Racing. Takes a **supplier spreadsheet** (`.xlsx` / `.csv`) and an **EMX product file**, keeps only the supplier rows for products EMX actually stocks, downloads those products' images, and renames each image to the matching EMX article number.
+
+The EMX product file is the source of truth: it pairs each EMX article number with the supplier's corresponding article number. SPIX joins the two files on the supplier article number, so the supplier's full catalogue is filtered down to just the products EMX carries.
 
 Built with [Wails v2](https://wails.io/) — Go backend, React/TypeScript frontend, shipped as a single native binary.
+
+---
+
+## What it does
+
+1. Load a supplier spreadsheet and the EMX product file.
+2. Map the relevant columns in each (supplier article number + image URL on the supplier side; EMX article number + supplier article number on the EMX side).
+3. Join + filter: keep only supplier rows whose article number appears in the EMX file, and attach the matching EMX article number to each.
+4. Download the images for those products and rename them to the EMX article number.
+
+Later phases (systematic image look, network "eline" folder, single-purpose import files, AI descriptions) are tracked in [`roadmap.md`](roadmap.md) but are out of current scope.
 
 ---
 
@@ -30,7 +43,7 @@ wails version    # v2.x
 
 ```sh
 git clone <repo-url>
-cd pibr
+cd spix
 
 # Wails installs frontend deps automatically on first run,
 # but you can pre-install them:
@@ -76,14 +89,14 @@ Produces a self-contained binary in `build/bin/`. No runtime dependencies requir
 ## Project structure
 
 ```text
-pibr/
+spix/
 ├── app.go              # Go app struct — exposes methods to the frontend
 ├── main.go             # Wails entry point
-├── parser/             # Go packages (spreadsheet parsing, image logic, etc.)
+├── spreadsheet/        # Go spreadsheet parsing (parsing/ subpackage)
 ├── frontend/
 │   ├── src/
 │   │   ├── components/ # React UI components (shadcn/ui base)
-│   │   ├── lib/        # Utilities, toast helpers, simple spreadsheet metadata parser
+│   │   ├── lib/        # Utilities, toast helpers, workbook model
 │   │   └── App.tsx     # Root component
 │   ├── package.json
 │   └── vite.config.ts
@@ -99,15 +112,15 @@ pibr/
 ### Backend (Go)
 
 - [Wails v2](https://wails.io/) — bridges Go and the webview frontend
+- [excelize](https://github.com/qax-os/excelize) — XLSX parsing (CSV uses stdlib `encoding/csv`)
 
 ### Frontend (TypeScript / React)
 
-- React 19 + TypeScript 6
-- Vite 8
+- React 19 + TypeScript
+- Vite
 - Tailwind CSS v4
 - [shadcn/ui](https://ui.shadcn.com/) — component primitives
 - [sonner](https://sonner.emilkowal.ski/) — toast notifications
-- [exceljs](https://github.com/exceljs/exceljs) — in-browser Excel/CSV parsing
 
 ---
 
@@ -123,13 +136,13 @@ pibr/
 
 ## Planned features
 
-- [ ] Spreadsheet preview with column mapping UI
-- [ ] Extract product descriptions and item numbers from mapped columns
-- [ ] Define a manufacturer prefix applied to all EMX item numbers
-- [ ] Bulk image download from URLs in the spreadsheet
-- [ ] Rename images to `<prefix><item-number>` scheme
-- [ ] Export cleaned `.xlsx` with EMX item number, manufacturer number, description, image name, and bike fitment
-- [ ] Integration with internal Go binary for bike/brand fitment lookup
+- [ ] Load both the supplier spreadsheet and the EMX product file
+- [ ] Column mapping for both files (supplier article number, image URL; EMX article number, supplier article number)
+- [ ] Join + filter: supplier rows reduced to products EMX stocks, each tagged with its EMX article number
+- [ ] Studio preview of the filtered, matched products
+- [ ] Bulk image download for matched products
+- [ ] Rename downloaded images to `<EMX article number>` (with a suffix for multiple images per product)
+- [ ] Download report (matched, unmatched, downloaded, failed)
 
 ---
 

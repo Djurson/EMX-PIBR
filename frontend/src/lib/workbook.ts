@@ -1,9 +1,5 @@
-import type { SelectedSpreadsheet } from "@/components/SpreadsheetPicker";
-
 /**
  * A single worksheet's parsed contents. `rows` excludes the header row.
- * Until the Go row-extraction step (roadmap M0) lands, `rows` is empty and the
- * grid renders an empty-state body under the mapping header.
  */
 export interface SheetData {
   /** Sheet/tab name as it appears in the workbook. */
@@ -23,18 +19,17 @@ export interface Workbook {
 }
 
 /**
- * Adapts a {@link SelectedSpreadsheet} into a {@link Workbook}.
+ * Adapts the Go `OpenWorkbook` binding result into a {@link Workbook}.
  *
- * The current Go binding returns only the first sheet's headers and aggregate
- * counts — no per-sheet names or row data. This shim therefore produces a
- * single sheet with no rows; once M0 returns structured per-sheet data this
- * function is the one place to widen.
- * @param file - The selected spreadsheet from the import step.
- * @returns A workbook with one header-only sheet.
+ * The Go `spreadsheet.Workbook` struct mirrors this model field-for-field, so
+ * the conversion is structural. This is the single adapter point between the
+ * generated binding type and the frontend model.
+ * @param wb - The workbook returned by the Go `OpenWorkbook` method.
+ * @returns A frontend {@link Workbook}.
  */
-export function toWorkbook(file: SelectedSpreadsheet): Workbook {
+export function toWorkbook(wb: Workbook): Workbook {
   return {
-    fileName: file.name,
-    sheets: [{ name: file.name, headers: file.headers, rows: [] }],
+    fileName: wb.fileName,
+    sheets: wb.sheets.map((s) => ({ name: s.name, headers: s.headers ?? [], rows: s.rows ?? [] })),
   };
 }

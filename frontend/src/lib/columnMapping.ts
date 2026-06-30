@@ -11,22 +11,29 @@ export interface FieldDef {
   label: string;
   /** Whether a source column must be assigned before continuing. */
   required: boolean;
+  /** When true, multiple source columns can be assigned to this field. */
+  multi: boolean;
   /** Lowercase substrings used to auto-guess a matching source column. */
   keywords: string[];
 }
 
 /**
- * Maps each EMX output field to a chosen source column header, or `null` when
- * unassigned. Keys are exhaustive over {@link FieldKey}.
+ * Maps each EMX output field to a chosen source column header (or headers for
+ * multi fields), or `null` when unassigned. Keys are exhaustive over {@link FieldKey}.
  */
-export type ColumnMapping = Record<FieldKey, string | null>;
+export type ColumnMapping = {
+  articleNumber: string | null;
+  description: string | null;
+  images: string[];
+  manuals: string | null;
+};
 
 /** The EMX output fields, in display order. */
 export const EMX_FIELDS: FieldDef[] = [
-  { key: "articleNumber", label: "Article Number", required: true, keywords: ["manufacturer", "mfr", "supplier", "item number", "item no", "art", "sku", "part"] },
-  { key: "description", label: "Product Description", required: false, keywords: ["description", "desc", "name", "title", "product"] },
-  { key: "images", label: "Product Images", required: false, keywords: ["image", "img", "photo", "picture", "url", "link"] },
-  { key: "manuals", label: "Product Manuals", required: false, keywords: ["manual", "instruction", "guide"] },
+  { key: "articleNumber", label: "Article Number", required: true, multi: false, keywords: ["manufacturer", "mfr", "supplier", "item number", "item no", "art", "sku", "part"] },
+  { key: "description", label: "Product Description", required: false, multi: false, keywords: ["description", "desc", "name", "title", "product"] },
+  { key: "images", label: "Product Images", required: false, multi: true, keywords: ["image", "img", "photo", "picture", "url", "link"] },
+  { key: "manuals", label: "Product Manuals", required: false, multi: false, keywords: ["manual", "instruction", "guide"] },
 ];
 
 function normalize(header: string): string {
@@ -38,24 +45,26 @@ function normalize(header: string): string {
  * provided headers. Each header is assigned to at most one field; fields are
  * resolved in {@link EMX_FIELDS} order so earlier fields win on a tie.
  * @param headers - Source column headers from the spreadsheet.
- * @returns A mapping with a best-guess header per field, or `null` if no match.
+ * @returns A mapping with a best-guess header per field, or null/[] if no match.
  */
 export function guessMapping(headers: string[]): ColumnMapping {
-  const mapping = {} as ColumnMapping;
+  const mapping: ColumnMapping = { articleNumber: null, description: null, images: [], manuals: null };
   const taken = new Set<string>();
 
   for (const field of EMX_FIELDS) {
-    let match: string | null = null;
     for (const header of headers) {
       if (taken.has(header)) continue;
       const norm = normalize(header);
       if (field.keywords.some((kw) => norm.includes(kw))) {
-        match = header;
-        break;
+        taken.add(header);
+        if (field.key === "images") {
+          mapping.images.push(header);
+        } else {
+          mapping[field.key] = header;
+          break;
+        }
       }
     }
-    if (match) taken.add(match);
-    mapping[field.key] = match;
   }
 
   return mapping;
@@ -64,8 +73,11 @@ export function guessMapping(headers: string[]): ColumnMapping {
 /**
  * Reports whether every required field in the mapping has an assigned column.
  * @param mapping - The current column mapping.
- * @returns `true` when all `required` fields are non-null.
+ * @returns `true` when all `required` fields are non-null / non-empty.
  */
 export function isMappingComplete(mapping: ColumnMapping): boolean {
-  return EMX_FIELDS.filter((f) => f.required).every((f) => mapping[f.key] !== null);
+  return EMX_FIELDS.filter((f) => f.required).every((f) => {
+    const val = mapping[f.key];
+    return Array.isArray(val) ? val.length > 0 : val !== null;
+  });
 }
