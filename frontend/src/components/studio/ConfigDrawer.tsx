@@ -1,7 +1,8 @@
 import { Label } from "@/components/ui/label";
-import { EMX_FIELDS, type ColumnMapping, type FieldKey } from "@/lib/columnMapping";
+import { EMX_FIELDS } from "@/lib/spreadsheet/columnMapping";
 import { ColumnMultiCombobox } from "@/components/studio/comboboxes/ColumnMultiCombobox";
 import { ColumnCombobox } from "@/components/studio/comboboxes/ColumnComboBox";
+import { ColumnMapping, FieldKey } from "@/lib/spreadsheet/types";
 
 interface ConfigDrawerProps {
   /** Current field → column assignment. */

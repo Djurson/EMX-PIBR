@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
-import type { SheetData } from "@/lib/workbook";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { SheetData } from "@/lib/spreadsheet/types";
 
 interface SheetRailProps {
   /** Worksheets to list. */

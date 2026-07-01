@@ -5,11 +5,10 @@ import { SpreadsheetPicker, type SelectedSpreadsheet } from "@/components/Spread
 import { MappingStudio } from "@/components/studio/MappingStudio";
 import { OpenSpreadsheetFromPath } from "../wailsjs/go/main/App";
 import { OnFileDrop, OnFileDropOff } from "../wailsjs/runtime/runtime";
-import { ToastError } from "@/lib/ToastFunctions";
-import { cn } from "./lib/utils";
+import { ToastError } from "@/lib/toast";
+import { cn } from "@/lib/utils";
 import { ChevronRight } from "lucide-react";
-
-export type FileVariant = "supplier" | "emx";
+import { FileVariant } from "@/lib/spreadsheet/types";
 
 export default function App() {
   const [supplierFile, setSupplierFile] = useState<SelectedSpreadsheet | null>(null);
@@ -52,14 +51,9 @@ export default function App() {
 
   const handleFileChange = (variant: FileVariant, file: SelectedSpreadsheet | null) => (variant === "supplier" ? setSupplierFile(file) : setEmxFile(file));
 
-  function openStudio() {
-    if (!supplierFile || !emxFile) return;
-    setStudioOpen(true);
-  }
+  const openStudio = () => (!supplierFile || !emxFile ? undefined : setStudioOpen(true));
 
-  if (studioOpen && supplierFile && emxFile) {
-    return <MappingStudio supplierPath={supplierFile.path} emxPath={emxFile.path} onBack={() => setStudioOpen(false)} />;
-  }
+  if (studioOpen && supplierFile && emxFile) return <MappingStudio supplierPath={supplierFile.path} emxPath={emxFile.path} onBack={() => setStudioOpen(false)} />;
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-8">

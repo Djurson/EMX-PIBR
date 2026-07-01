@@ -18,15 +18,6 @@ function formatSize(bytes: number): string {
  */
 const fileExt = (name: string): string => name.split(".").pop()?.toUpperCase() ?? "FILE";
 
-export interface SpreadsheetStats {
-  /** Number of sheets. `undefined` for CSV (single implicit sheet). */
-  numberOfSheets?: number;
-  /** Number of named Excel tables. `undefined` for CSV (no table concept). */
-  totalExcelTables?: number;
-  /** Total data rows across all sheets, excluding the header row. */
-  totalRows: number;
-}
-
 /**
  * Builds a display metadata string for a spreadsheet file.
  * Always includes the file type and size. Appends row and table counts

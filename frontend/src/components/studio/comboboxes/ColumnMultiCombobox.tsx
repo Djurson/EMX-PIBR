@@ -4,24 +4,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { useState } from "react";
-
-interface ColumnMultiComboboxProps {
-  /** Currently selected column indices. */
-  value: number[];
-  /** All available headers. */
-  headers: string[];
-  /** Called with the updated selection when a column is toggled. */
-  onChange: (value: number[]) => void;
-  placeholder?: string;
-}
+import { ColumnMultiComboboxProps } from "./types";
 
 /** Multi-select searchable combobox for choosing multiple source columns. */
 export function ColumnMultiCombobox({ value, headers, onChange, placeholder = "None" }: ColumnMultiComboboxProps) {
   const [open, setOpen] = useState(false);
 
-  function toggle(i: number) {
-    onChange(value.includes(i) ? value.filter((v) => v !== i) : [...value, i]);
-  }
+  const toggle = (i: number) => onChange(value.includes(i) ? value.filter((v) => v !== i) : [...value, i]);
 
   const triggerLabel = value.length === 0 ? placeholder : value.length === 1 ? headers[value[0]] || `(column ${value[0] + 1})` : `${value.length} columns`;
 

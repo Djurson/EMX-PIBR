@@ -1,5 +1,5 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { SheetData } from "@/lib/workbook";
+import { SheetData } from "@/lib/spreadsheet/types";
 
 interface MappingGridProps {
   /** The sheet whose rows and headers are shown. */

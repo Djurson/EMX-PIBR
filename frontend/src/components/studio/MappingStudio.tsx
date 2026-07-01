@@ -3,12 +3,13 @@ import { Button } from "@/components/ui/button";
 import { SheetRail } from "./SheetRail";
 import { MappingGrid } from "./MappingGrid";
 import { ConfigDrawer } from "./ConfigDrawer";
-import { guessMapping, type ColumnMapping } from "@/lib/columnMapping";
+import { guessMapping } from "@/lib/spreadsheet/columnMapping";
 import { Separator } from "@/components/ui/separator";
 import { main } from "../../../wailsjs/go/models";
 import { LoadProject, ProcessSheet } from "../../../wailsjs/go/main/App";
-import { ToastError, ToastSucess } from "@/lib/ToastFunctions";
+import { ToastError, ToastSucess } from "@/lib/toast";
 import { ChevronRight, Loader2 } from "lucide-react";
+import { ColumnMapping } from "@/lib/spreadsheet/types";
 
 interface MappingStudioProps {
   /** Absolute path to the supplier spreadsheet, chosen on the import screen. */
@@ -104,9 +105,7 @@ export function MappingStudio({ supplierPath, emxPath, onBack }: MappingStudioPr
         {sheet ? (
           <MappingGrid sheet={sheet} />
         ) : (
-          <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-muted-foreground">
-            {!processing && "No products matched the EMX catalogue. Check that the supplier and EMX files belong to the same supplier."}
-          </div>
+          <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-muted-foreground">{!processing && "No products matched the EMX catalogue. Check that the supplier and EMX files belong to the same supplier."}</div>
         )}
       </div>
     </div>

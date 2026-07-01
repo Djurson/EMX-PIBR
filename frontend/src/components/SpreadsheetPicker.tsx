@@ -3,10 +3,10 @@ import { FileSpreadsheet, Upload, X } from "lucide-react";
 import { Attachment, AttachmentAction, AttachmentActions, AttachmentContent, AttachmentDescription, AttachmentMedia, AttachmentTitle } from "@/components/ui/attachment";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { OpenSpreadsheet } from "../../wailsjs/go/main/App";
-import { ToastError } from "@/lib/ToastFunctions";
-import { BuildFileMetaData } from "@/lib/metadata/parsing";
+import { ToastError } from "@/lib/toast";
+import { BuildFileMetaData } from "@/lib/spreadsheet/fileMeta";
 import { cn } from "@/lib/utils";
-import type { FileVariant } from "@/App";
+import { FileVariant } from "@/lib/spreadsheet/types";
 
 /**
  * File metadata and parsed statistics for a spreadsheet opened via the OS dialog.
@@ -38,6 +38,7 @@ interface SpreadsheetPickerProps {
   onChange: (variant: FileVariant, file: SelectedSpreadsheet | null) => void;
   /** Whether a file is currently being dragged over this zone. */
   dragging?: boolean;
+  /** Wether the picker is disabled or not */
   disabled?: boolean;
 }
 

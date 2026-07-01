@@ -4,16 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { useState } from "react";
-
-interface ColumnComboboxProps {
-  /** Currently selected column index, or null. */
-  value: number | null;
-  /** All available headers. */
-  headers: string[];
-  /** Called with the new column index or null when cleared. */
-  onChange: (value: number | null) => void;
-  placeholder?: string;
-}
+import { ColumnComboboxProps } from "./types";
 
 /** Single-select searchable combobox for choosing one source column. */
 export function ColumnCombobox({ value, headers, onChange, placeholder = "None" }: ColumnComboboxProps) {

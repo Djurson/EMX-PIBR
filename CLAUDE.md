@@ -118,15 +118,9 @@ Use **shadcn/ui** components first. Only drop to raw HTML tags when no shadcn co
 
 `@/` alias for everything under `frontend/src/`:
 
-```ts
-import { cn } from "@/lib/utils";
-import { BuildArticleNumber } from "@/lib/supplierProfile";
-```
-
 Relative paths for Wails-generated bindings (they live outside `src/`):
 
 ```ts
-import { OpenSpreadsheet } from "../../wailsjs/go/main/App";
 import { OnFileDrop } from "../../wailsjs/runtime/runtime";
 ```
 
@@ -162,7 +156,3 @@ if path == "" {
 const info = await OpenSpreadsheet();
 if (!info) return;
 ```
-
-### `richColors` in Toaster
-
-`main.tsx` mounts `<Toaster richColors closeButton position="top-right" />`. `richColors` applies type-specific icon colours; custom icon colours (e.g. `text-red-300`) still layer on top. Sonner's icon-to-text gap is the CSS var `--toast-icon-margin-end` (set it on the toast `style`, not a margin class on the icon).
