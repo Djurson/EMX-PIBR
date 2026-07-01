@@ -48,7 +48,7 @@ All file reading happens in **Go**. The frontend never reads files directly — 
 - OS dialog via `runtime.OpenFileDialog` → `OpenSpreadsheet()` (cheap metadata: `SpreadsheetInfo`).
 - Native drag-and-drop (`OnFileDrop`) → `OpenSpreadsheetFromPath(path)` (same `SpreadsheetInfo`).
 
-For full data, `OpenWorkbook(path)` returns a `parsing.Workbook` (every sheet's headers + rows). The import screen takes **two** files — the supplier spreadsheet and the EMX product file — routed by `data-drop-zone` (see the drag-and-drop gotcha).
+For full data, `LoadProject(supplierPath, emxPath)` parses both files and joins them, returning a `Project` (`parsing.Workbook` per file plus the `Combined`, filtered result). The import screen takes **two** files — the supplier spreadsheet and the EMX product file — routed by `data-drop-zone` (see the drag-and-drop gotcha).
 
 ### Parsing (`spreadsheet/parsing`, no Wails dependency)
 
@@ -61,28 +61,28 @@ Files in the package: `parse.go` (public API + CSV/Excel dispatch: `IsCSV`, `Get
 
 ### Frontend: the studio
 
-Flow: import screen (two `SpreadsheetPicker`s in [`App.tsx`](frontend/src/App.tsx)) → studio once `OpenWorkbook` resolves (`App.tsx` gates on `workbook`). The studio currently shows the parsed supplier workbook (sheet rail + read-only grid + a config drawer for column mapping); the join/filter against the EMX file is the next build step (roadmap M2/M3).
+Flow: import screen (two `SpreadsheetPicker`s in [`App.tsx`](frontend/src/App.tsx)) → studio opens immediately once both file paths are chosen (`App.tsx` gates on `studioOpen`, passes `supplierPath`/`emxPath`). `MappingStudio` calls `LoadProject` itself on mount and shows a loading overlay while the Go backend parses + joins the two files; the same overlay is reused while `ProcessSheet` downloads images. The studio shows the combined (filtered) workbook: sheet rail + read-only grid + a config drawer for column mapping.
 
-Spreadsheet data is modeled by `Workbook` / `SheetData` ([`lib/workbook.ts`](frontend/src/lib/workbook.ts)); `toWorkbook` adapts the Go `parsing.Workbook` binding into that model and is the single adapter point.
+Sheet data is typed via `SheetData` ([`lib/workbook.ts`](frontend/src/lib/workbook.ts)), matching the Go `parsing.SheetData` binding field-for-field — no adapter needed, the studio consumes the generated `main.Project`/`main.Workbook` types directly.
 
 ## Key files
 
-| Path                                                                      | Responsibility                                                                                             |
-| ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| [`app.go`](app.go)                                                        | Wails `App`; bound methods `OpenSpreadsheet`, `OpenSpreadsheetFromPath`, `OpenWorkbook`; `SpreadsheetInfo` |
-| [`main.go`](main.go)                                                      | Wails options; window config; `DragAndDrop.EnableFileDrop`                                                 |
-| `spreadsheet/parsing/{parse,csv,excel,types}.go`                          | CSV + XLSX parsing (stats, headers, full workbook); no Wails dependency                                    |
-| `frontend/src/App.tsx`                                                    | Top-level: two-file import screen → studio gate; global `OnFileDrop` drop routing                          |
-| `frontend/src/components/SpreadsheetPicker.tsx`                           | File picker — OS dialog + drag-and-drop; `data-drop-zone` + `variant`                                      |
-| `frontend/src/components/studio/MappingStudio.tsx`                        | Studio workspace orchestrator                                                                              |
-| `frontend/src/components/studio/{SheetRail,MappingGrid,ConfigDrawer}.tsx` | Studio panes                                                                                               |
-| `frontend/src/components/studio/comboboxes/`                              | Searchable single/multi column-mapping comboboxes                                                          |
-| `frontend/src/lib/columnMapping.ts`                                       | EMX field set, `guessMapping`, `isMappingComplete`                                                         |
-| `frontend/src/lib/workbook.ts`                                            | `Workbook`/`SheetData` model + `toWorkbook` adapter                                                        |
-| `frontend/src/lib/metadata/parsing.ts`                                    | `BuildFileMetaData`, `SpreadsheetStats`                                                                    |
-| `frontend/src/lib/ToastFunctions.tsx`                                     | `ToastError`, `ToastSucess` wrappers                                                                       |
-| `frontend/src/lib/utils.ts`                                               | `cn()` Tailwind class merger                                                                               |
-| `frontend/wailsjs/`                                                       | Auto-generated Wails bindings — do not edit                                                                |
+| Path                                                                      | Responsibility                                                                                                            |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| [`app.go`](app.go)                                                        | Wails `App`; bound methods `LoadProject`, `OpenSpreadsheet`, `OpenSpreadsheetFromPath`, `ProcessSheet`; `SpreadsheetInfo` |
+| [`main.go`](main.go)                                                      | Wails options; window config; `DragAndDrop.EnableFileDrop`                                                                |
+| `spreadsheet/parsing/{parse,csv,excel,types}.go`                          | CSV + XLSX parsing (stats, headers, full workbook); no Wails dependency                                                   |
+| `frontend/src/App.tsx`                                                    | Top-level: two-file import screen → studio gate; global `OnFileDrop` drop routing                                         |
+| `frontend/src/components/SpreadsheetPicker.tsx`                           | File picker — OS dialog + drag-and-drop; `data-drop-zone` + `variant`                                                     |
+| `frontend/src/components/studio/MappingStudio.tsx`                        | Studio workspace orchestrator                                                                                             |
+| `frontend/src/components/studio/{SheetRail,MappingGrid,ConfigDrawer}.tsx` | Studio panes                                                                                                              |
+| `frontend/src/components/studio/comboboxes/`                              | Searchable single/multi column-mapping comboboxes                                                                         |
+| `frontend/src/lib/columnMapping.ts`                                       | EMX field set, `guessMapping`                                                                                             |
+| `frontend/src/lib/workbook.ts`                                            | `SheetData` model                                                                                                         |
+| `frontend/src/lib/metadata/parsing.ts`                                    | `BuildFileMetaData`, `SpreadsheetStats`                                                                                   |
+| `frontend/src/lib/ToastFunctions.tsx`                                     | `ToastError`, `ToastSucess` wrappers                                                                                      |
+| `frontend/src/lib/utils.ts`                                               | `cn()` Tailwind class merger                                                                                              |
+| `frontend/wailsjs/`                                                       | Auto-generated Wails bindings — do not edit                                                                               |
 
 ## Code conventions
 

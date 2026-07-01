@@ -6,12 +6,12 @@ import { Check, ChevronsUpDown } from "lucide-react";
 import { useState } from "react";
 
 interface ColumnComboboxProps {
-  /** Currently selected header, or null. */
-  value: string | null;
+  /** Currently selected column index, or null. */
+  value: number | null;
   /** All available headers. */
   headers: string[];
-  /** Called with the new header or null when cleared. */
-  onChange: (value: string | null) => void;
+  /** Called with the new column index or null when cleared. */
+  onChange: (value: number | null) => void;
   placeholder?: string;
 }
 
@@ -19,11 +19,13 @@ interface ColumnComboboxProps {
 export function ColumnCombobox({ value, headers, onChange, placeholder = "None" }: ColumnComboboxProps) {
   const [open, setOpen] = useState(false);
 
+  const selectedLabel = value === null ? placeholder : headers[value] || `(column ${value + 1})`;
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="outline" role="combobox" aria-expanded={open} className="h-8 w-full justify-between text-xs font-normal truncate">
-          <span className="truncate">{value ?? placeholder}</span>
+          <span className="truncate">{selectedLabel}</span>
           <ChevronsUpDown className="ml-1 size-3 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -47,10 +49,10 @@ export function ColumnCombobox({ value, headers, onChange, placeholder = "None" 
                   key={i}
                   value={`${i}:${label}`}
                   onSelect={() => {
-                    onChange(header);
+                    onChange(i);
                     setOpen(false);
                   }}>
-                  <Check className={cn("mr-1 size-3", value === header ? "opacity-100" : "opacity-0")} />
+                  <Check className={cn("mr-1 size-3", value === i ? "opacity-100" : "opacity-0")} />
                   {label}
                 </CommandItem>
               );

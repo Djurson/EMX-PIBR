@@ -1,5 +1,25 @@
 export namespace main {
 	
+	export class ColumnMapping {
+	    emxNumber?: number;
+	    articleNumber?: number;
+	    description?: number;
+	    images: number[];
+	    manuals?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ColumnMapping(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.emxNumber = source["emxNumber"];
+	        this.articleNumber = source["articleNumber"];
+	        this.description = source["description"];
+	        this.images = source["images"];
+	        this.manuals = source["manuals"];
+	    }
+	}
 	export class Project {
 	    supplierPath: string;
 	    emxPath: string;

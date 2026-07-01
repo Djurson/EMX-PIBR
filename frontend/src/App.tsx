@@ -3,8 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SpreadsheetPicker, type SelectedSpreadsheet } from "@/components/SpreadsheetPicker";
 import { MappingStudio } from "@/components/studio/MappingStudio";
-import { OpenSpreadsheetFromPath, LoadProject } from "../wailsjs/go/main/App";
-import { main } from "../wailsjs/go/models";
+import { OpenSpreadsheetFromPath } from "../wailsjs/go/main/App";
 import { OnFileDrop, OnFileDropOff } from "../wailsjs/runtime/runtime";
 import { ToastError } from "@/lib/ToastFunctions";
 import { cn } from "./lib/utils";
@@ -15,8 +14,7 @@ export type FileVariant = "supplier" | "emx";
 export default function App() {
   const [supplierFile, setSupplierFile] = useState<SelectedSpreadsheet | null>(null);
   const [emxFile, setEmxFile] = useState<SelectedSpreadsheet | null>(null);
-  const [project, setProject] = useState<main.Project | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [studioOpen, setStudioOpen] = useState(false);
   const [dragging, setDragging] = useState<FileVariant | null>(null);
 
   useEffect(() => {
@@ -54,20 +52,14 @@ export default function App() {
 
   const handleFileChange = (variant: FileVariant, file: SelectedSpreadsheet | null) => (variant === "supplier" ? setSupplierFile(file) : setEmxFile(file));
 
-  async function openStudio() {
+  function openStudio() {
     if (!supplierFile || !emxFile) return;
-    setLoading(true);
-    try {
-      const project = await LoadProject(supplierFile.path, emxFile.path);
-      setProject(project);
-    } catch (e) {
-      ToastError(`Failed to load: ${e}`);
-    } finally {
-      setLoading(false);
-    }
+    setStudioOpen(true);
   }
 
-  if (project) return <MappingStudio project={project} onBack={() => setProject(null)} />;
+  if (studioOpen && supplierFile && emxFile) {
+    return <MappingStudio supplierPath={supplierFile.path} emxPath={emxFile.path} onBack={() => setStudioOpen(false)} />;
+  }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-8">
@@ -113,9 +105,9 @@ export default function App() {
         </div>
 
         <div className="flex justify-end">
-          <Button size="lg" disabled={!supplierFile || !emxFile || loading} onClick={openStudio} className="flex items-center">
-            {loading ? "Reading…" : "Open in studio"}
-            {!loading && <ChevronRight className="size-3" />}
+          <Button size="lg" disabled={!supplierFile || !emxFile} onClick={openStudio} className="flex items-center">
+            Open in studio
+            <ChevronRight className="size-3" />
           </Button>
         </div>
       </div>

@@ -1,7 +1,10 @@
 package main
 
 import (
+	"context"
 	"embed"
+
+	"spix/utils/logging"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -12,6 +15,9 @@ import (
 var assets embed.FS
 
 func main() {
+	logging.Init()
+	defer logging.Close()
+
 	// Create an instance of the app structure
 	app := NewApp()
 
@@ -23,12 +29,13 @@ func main() {
 		AssetServer:      &assetserver.Options{Assets: assets},
 		BackgroundColour: &options.RGBA{R: 255, G: 255, B: 255, A: 255},
 		OnStartup:        app.startup,
+		OnShutdown:       func(ctx context.Context) { logging.Close() },
 		Bind:             []interface{}{app},
 		DragAndDrop:      &options.DragAndDrop{EnableFileDrop: true},
 		DisableResize:    false,
 	})
 
 	if err != nil {
-		println("Error:", err.Error())
+		logging.Log.Error("wails run failed", "err", err)
 	}
 }

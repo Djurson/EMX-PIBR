@@ -6,12 +6,12 @@ import { Check, ChevronsUpDown } from "lucide-react";
 import { useState } from "react";
 
 interface ColumnMultiComboboxProps {
-  /** Currently selected headers. */
-  value: string[];
+  /** Currently selected column indices. */
+  value: number[];
   /** All available headers. */
   headers: string[];
-  /** Called with the updated selection when a header is toggled. */
-  onChange: (value: string[]) => void;
+  /** Called with the updated selection when a column is toggled. */
+  onChange: (value: number[]) => void;
   placeholder?: string;
 }
 
@@ -19,11 +19,11 @@ interface ColumnMultiComboboxProps {
 export function ColumnMultiCombobox({ value, headers, onChange, placeholder = "None" }: ColumnMultiComboboxProps) {
   const [open, setOpen] = useState(false);
 
-  function toggle(header: string) {
-    onChange(value.includes(header) ? value.filter((h) => h !== header) : [...value, header]);
+  function toggle(i: number) {
+    onChange(value.includes(i) ? value.filter((v) => v !== i) : [...value, i]);
   }
 
-  const triggerLabel = value.length === 0 ? placeholder : value.length === 1 ? value[0] : `${value.length} columns`;
+  const triggerLabel = value.length === 0 ? placeholder : value.length === 1 ? headers[value[0]] || `(column ${value[0] + 1})` : `${value.length} columns`;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -40,9 +40,9 @@ export function ColumnMultiCombobox({ value, headers, onChange, placeholder = "N
             <CommandEmpty>No column found.</CommandEmpty>
             {headers.map((header, i) => {
               const label = header || `(column ${i + 1})`;
-              const selected = value.includes(header);
+              const selected = value.includes(i);
               return (
-                <CommandItem key={i} value={`${i}:${label}`} onSelect={() => toggle(header)}>
+                <CommandItem key={i} value={`${i}:${label}`} onSelect={() => toggle(i)}>
                   <Check className={cn("mr-1 size-3", selected ? "opacity-100" : "opacity-0")} />
                   {label}
                 </CommandItem>

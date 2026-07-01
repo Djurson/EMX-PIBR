@@ -40,36 +40,36 @@ The EMX product file (no example committed yet) holds at least two columns: the 
 
 **Deliverable:** `ReadWorkbook` returns structured rows for every sheet, bound to the frontend.
 
-### M1 — Two-file load + column mapping
+### M1 — Two-file load + column mapping (in progress)
 
 Load both files and map their relevant columns. Supplier layouts differ (Polisport vs Bolt), so mapping is per-import.
 
-- [ ] Import screen takes **two** files: supplier spreadsheet + EMX product file.
-- [ ] Supplier column mapping: supplier article number (required), image URL(s) (required, can be multiple columns).
-- [ ] EMX column mapping: EMX article number (required), supplier article number (required).
-- [ ] Auto-guess mapping by header name for both files.
+- [x] Import screen takes **two** files: supplier spreadsheet + EMX product file. (`App.tsx` two `SpreadsheetPicker`s → `LoadProject`)
+- [~] Supplier column mapping: supplier article number (required), image URL(s) (required, can be multiple columns). _UI built (`ConfigDrawer` + `columnMapping.ts`) but not yet consumed — the join auto-detects the article column by data overlap and ignores the mapping._
+- [ ] EMX column mapping: EMX article number (required), supplier article number (required). _Hardcoded in `combine.go` (`Artikelkod` / `Lev art.kod`); no mapping UI._
+- [~] Auto-guess mapping by header name for both files. _`guessMapping` done for the supplier side; EMX side not guessed._
 - [ ] (Later) Save/load mapping presets per supplier.
 
 **Deliverable:** Two parsed workbooks plus a mapping object for each that the join step consumes.
 
-### M2 — Join + filter engine
+### M2 — Join + filter engine (in progress)
 
-The heart of the tool. Match the supplier list against the EMX product file.
+The heart of the tool. Match the supplier list against the EMX product file. Lives in `spreadsheet/combine/combine.go`.
 
-- [ ] Build a lookup from the EMX file: `supplier article number → EMX article number` (normalize keys: trim, case-fold, strip incidental formatting).
-- [ ] For each supplier row, look up its article number; keep the row only on a match, and attach the EMX article number.
+- [x] Build a lookup from the EMX file: `supplier article number → EMX article number` (normalize keys: trim, case-fold, strip incidental formatting). _`buildLookup` + `normalize` (trim + uppercase); no incidental-formatting strip yet._
+- [x] For each supplier row, look up its article number; keep the row only on a match, and attach the EMX article number. _`detectArticleColumn` (by data overlap) + `filterSheet` prepends `EMX Article Number`._
 - [ ] Report counts: matched, unmatched supplier rows, and EMX entries with no supplier row.
-- [ ] Handle duplicate / ambiguous supplier numbers on either side (define precedence, surface conflicts).
+- [ ] Handle duplicate / ambiguous supplier numbers on either side (define precedence, surface conflicts). _Lookup currently last-write-wins, no conflict surfacing._
 
 **Deliverable:** A filtered, matched product list — only products EMX stocks, each carrying its EMX article number — ready for the studio and image download.
 
-### M3 — Studio: matched-product view
+### M3 — Studio: matched-product view (in progress)
 
 Replace the column-mapping-centric studio with a view of the join result.
 
-- [ ] Show the filtered, matched rows: EMX article number + supplier number + image column(s).
-- [ ] Surface match stats (X of Y supplier rows matched) and let the user spot unmatched products.
-- [ ] Select which matched products to process (default: all).
+- [x] Show the filtered, matched rows: EMX article number + supplier number + image column(s). _`MappingStudio` + `MappingGrid` render the combined workbook with prepended EMX article column._
+- [ ] Surface match stats (X of Y supplier rows matched) and let the user spot unmatched products. _Counts not returned from `Combine` (see M2)._
+- [ ] Select which matched products to process (default: all). _`Process N →` button present but inert; no row selection._
 
 **Deliverable:** A studio that shows what will actually be processed and lets the user confirm before running.
 

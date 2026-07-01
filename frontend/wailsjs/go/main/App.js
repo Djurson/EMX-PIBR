@@ -14,6 +14,6 @@ export function OpenSpreadsheetFromPath(arg1) {
   return window['go']['main']['App']['OpenSpreadsheetFromPath'](arg1);
 }
 
-export function OpenWorkbook(arg1) {
-  return window['go']['main']['App']['OpenWorkbook'](arg1);
+export function ProcessSheet(arg1, arg2) {
+  return window['go']['main']['App']['ProcessSheet'](arg1, arg2);
 }
